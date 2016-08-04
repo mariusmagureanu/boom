@@ -144,9 +144,9 @@ func startHttpServer(l net.Listener, wg *sync.WaitGroup) {
 
 func TestUnixRequest(t *testing.T) {
 	var waitForServer sync.WaitGroup
+	var count int32
 
 	udsPath := "./test.sock"
-
 	unixListener, _ := net.ListenUnix("unix", &net.UnixAddr{udsPath, "unix"})
 
 	waitForServer.Add(1)
@@ -154,6 +154,7 @@ func TestUnixRequest(t *testing.T) {
 	waitForServer.Wait()
 
 	http.HandleFunc("/", func(rw http.ResponseWriter, req *http.Request) {
+		atomic.AddInt32(&count, 1)
 		rw.WriteHeader(http.StatusPaymentRequired)
 	})
 
@@ -163,11 +164,15 @@ func TestUnixRequest(t *testing.T) {
 		UDS:         udsPath,
 		Request:     req,
 		RequestBody: "Body",
-		N:           10,
+		N:           100,
 		C:           1,
 	}
 	boomer.Run()
 
 	unixListener.Close()
 	os.Remove(udsPath)
+
+	if count != int32(boomer.N) {
+		t.Fatalf("Expected %d count, got %d instead.", boomer.N, count)
+	}
 }
