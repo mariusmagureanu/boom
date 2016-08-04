@@ -42,6 +42,8 @@ Options:
                         connections between different HTTP requests.
   -cpus                 Number of used cpu cores.
                         (default for current machine is 1 cores)
+  -unix-socket          Path to Unix domain socket file descriptor.
+                        E.g: /tmp/boom.sock
 ~~~
 
 This is what happens when you run Boom:
