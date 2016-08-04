@@ -67,6 +67,7 @@ var (
 	disableCompression = flag.Bool("disable-compression", false, "")
 	disableKeepAlives  = flag.Bool("disable-keepalive", false, "")
 	proxyAddr          = flag.String("x", "", "")
+	unixSocketPath     = flag.String("unix-socket", "", "")
 )
 
 var usage = `Usage: boom [options...] <url>
@@ -98,6 +99,8 @@ Options:
   -cpus                 Number of used cpu cores.
                         (default for current machine is %d cores)
   -host                 HTTP Host header.
+  -unix-socket          Path to Unix domain socket file descriptor.
+                        E.g: /tmp/boom.sock
 `
 
 func main() {
@@ -197,6 +200,7 @@ func main() {
 		H2:                 *h2,
 		ProxyAddr:          proxyURL,
 		Output:             *output,
+		UDS:                *unixSocketPath,
 	}).Run()
 }
 

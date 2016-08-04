@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"golang.org/x/net/http2"
+	"net"
 )
 
 type result struct {
@@ -72,6 +73,7 @@ type Boomer struct {
 	// Optional.
 	ProxyAddr *url.URL
 
+	UDS     string
 	results chan *result
 }
 
@@ -116,6 +118,12 @@ func (b *Boomer) makeRequest(c *http.Client) {
 	}
 }
 
+func dialUnix(proto, addr string) func(network, address string) (conn net.Conn, err error) {
+	return func(network, address string) (conn net.Conn, err error) {
+		return net.DialUnix(proto, nil, &net.UnixAddr{addr, proto})
+	}
+}
+
 func (b *Boomer) runWorker(n int) {
 	var throttle <-chan time.Time
 	if b.Qps > 0 {
@@ -132,6 +140,13 @@ func (b *Boomer) runWorker(n int) {
 		TLSHandshakeTimeout: time.Duration(b.Timeout) * time.Millisecond,
 		Proxy:               http.ProxyURL(b.ProxyAddr),
 	}
+
+	if b.UDS != "" {
+		tr = &http.Transport{
+			Dial: dialUnix("unix", b.UDS),
+		}
+	}
+
 	if b.H2 {
 		http2.ConfigureTransport(tr)
 	} else {

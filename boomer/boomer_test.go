@@ -17,8 +17,10 @@ package boomer
 import (
 	"bytes"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -132,4 +134,40 @@ func TestBody(t *testing.T) {
 	if count != 10 {
 		t.Errorf("Expected to boom 10 times, found %v", count)
 	}
+}
+
+func startHttpServer(l net.Listener, wg *sync.WaitGroup) {
+	server := &http.Server{Addr: l.Addr().String(), Handler: nil}
+	wg.Done()
+	server.Serve(l)
+}
+
+func TestUnixRequest(t *testing.T) {
+	var waitForServer sync.WaitGroup
+
+	udsPath := "./test.sock"
+
+	unixListener, _ := net.ListenUnix("unix", &net.UnixAddr{udsPath, "unix"})
+
+	waitForServer.Add(1)
+	go startHttpServer(unixListener, &waitForServer)
+	waitForServer.Wait()
+
+	http.HandleFunc("/", func(rw http.ResponseWriter, req *http.Request) {
+		rw.WriteHeader(http.StatusPaymentRequired)
+	})
+
+	req, _ := http.NewRequest("GET", "http://127.0.0.1:9292/", nil)
+
+	boomer := &Boomer{
+		UDS:         udsPath,
+		Request:     req,
+		RequestBody: "Body",
+		N:           10,
+		C:           1,
+	}
+	boomer.Run()
+
+	unixListener.Close()
+	os.Remove(udsPath)
 }
